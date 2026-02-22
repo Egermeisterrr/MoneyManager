@@ -1,8 +1,8 @@
 package com.example.feature_expenses.mvi
 
-import com.example.api_expenses.Expense
-import com.example.api_expenses.ExpenseCategory
-import com.example.api_expenses.StatsPeriod
+import com.example.domain_expenses.models.Expense
+import com.example.domain_expenses.models.ExpenseCategory
+import com.example.domain_expenses.models.StatsPeriod
 import pro.respawn.flowmvi.api.MVIIntent
 import pro.respawn.flowmvi.api.MVIState
 

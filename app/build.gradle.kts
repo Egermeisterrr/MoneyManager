@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.example.moneymanager"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.moneymanager"

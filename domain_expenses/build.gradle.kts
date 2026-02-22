@@ -1,11 +1,12 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
     namespace = "com.example.domain_expenses"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 28
@@ -21,5 +22,5 @@ android {
 }
 
 dependencies {
-    implementation(project(":api_expenses"))
+    implementation(libs.kotlinx.serialization.json)
 }

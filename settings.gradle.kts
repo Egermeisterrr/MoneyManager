@@ -21,6 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "MoneyManager"
 include(":app")
-include(":api_expenses")
+include(":data_expenses")
 include(":domain_expenses")
 include(":feature_expenses")

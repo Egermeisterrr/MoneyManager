@@ -1,16 +1,16 @@
 package com.example.feature_expenses.di
 
-import com.example.domain_expenses.AddExpenseUseCase
-import com.example.domain_expenses.ExpensesRepository
-import com.example.domain_expenses.FilterExpensesByPeriodUseCase
-import com.example.domain_expenses.GetExpensesUseCase
+import com.example.data_expenses.repository.ExpensesRepositoryImpl
+import com.example.domain_expenses.use_case.AddExpenseUseCase
+import com.example.domain_expenses.repository.ExpensesRepository
+import com.example.domain_expenses.use_case.FilterExpensesByPeriodUseCase
+import com.example.domain_expenses.use_case.GetExpensesUseCase
 import com.example.feature_expenses.mvi.ExpensesContainer
-import com.example.feature_expenses.repository.SharedPreferencesExpensesRepository
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 val expensesFeatureModule = module {
-    single<ExpensesRepository> { SharedPreferencesExpensesRepository(androidContext()) }
+    single<ExpensesRepository> { ExpensesRepositoryImpl(androidContext()) }
     factory { GetExpensesUseCase(get()) }
     factory { AddExpenseUseCase(get()) }
     factory { FilterExpensesByPeriodUseCase() }

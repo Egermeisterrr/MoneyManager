@@ -24,6 +24,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,8 +34,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -68,6 +72,7 @@ private val CategoryPalette = mapOf(
     ExpenseCategory.OTHER to Color(0xFF78909C)
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpensesRoute(
     container: ExpensesContainer
@@ -116,7 +121,36 @@ fun ExpensesRoute(
                 }
 
                 items(state.visibleExpenses, key = { it.id }) { expense ->
-                    ExpenseItem(expense)
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { dismissValue ->
+                            if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                                container.dispatch(ExpensesIntent.RequestDeleteExpense(expense.id))
+                            }
+                            false
+                        }
+                    )
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        enableDismissFromEndToStart = true,
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xFFFFEBEE), RoundedCornerShape(18.dp))
+                                    .padding(horizontal = 18.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Text(
+                                    text = "Delete",
+                                    color = Color(0xFFC62828),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    ) {
+                        ExpenseItem(expense)
+                    }
                 }
 
                 if (state.visibleExpenses.isEmpty()) {
@@ -147,6 +181,13 @@ fun ExpensesRoute(
             onAmountChanged = { container.dispatch(ExpensesIntent.ChangeAmount(it)) },
             onCommentChanged = { container.dispatch(ExpensesIntent.ChangeComment(it)) },
             onAddClick = { container.dispatch(ExpensesIntent.SubmitExpense) }
+        )
+    }
+
+    if (state.isDeleteDialogOpen) {
+        ConfirmDeleteDialog(
+            onDismiss = { container.dispatch(ExpensesIntent.DismissDeleteExpense) },
+            onConfirm = { container.dispatch(ExpensesIntent.ConfirmDeleteExpense) }
         )
     }
 }
@@ -356,6 +397,28 @@ private fun AddExpenseDialog(
         confirmButton = {
             TextButton(onClick = onAddClick) {
                 Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+private fun ConfirmDeleteDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete expense") },
+        text = { Text("Are you sure you want to delete this expense?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Delete", color = Color(0xFFC62828))
             }
         },
         dismissButton = {

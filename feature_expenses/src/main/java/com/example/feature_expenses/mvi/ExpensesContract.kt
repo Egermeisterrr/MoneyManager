@@ -11,6 +11,8 @@ data class ExpensesState(
     val visibleExpenses: List<Expense> = emptyList(),
     val selectedPeriod: StatsPeriod = StatsPeriod.MONTH,
     val isAddDialogOpen: Boolean = false,
+    val isDeleteDialogOpen: Boolean = false,
+    val pendingDeleteExpenseId: String? = null,
     val selectedCategory: ExpenseCategory? = null,
     val amountInput: String = "",
     val commentInput: String = "",
@@ -26,4 +28,7 @@ sealed interface ExpensesIntent : MVIIntent {
     data class ChangeAmount(val amount: String) : ExpensesIntent
     data class ChangeComment(val comment: String) : ExpensesIntent
     data object SubmitExpense : ExpensesIntent
+    data class RequestDeleteExpense(val expenseId: String) : ExpensesIntent
+    data object ConfirmDeleteExpense : ExpensesIntent
+    data object DismissDeleteExpense : ExpensesIntent
 }

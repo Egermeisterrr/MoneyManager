@@ -20,7 +20,18 @@ class ExpensesRepositoryImpl(context: Context) : ExpensesRepository {
 
     override suspend fun addExpense(expense: Expense) {
         val current = getExpenses().toMutableList().apply { add(0, expense) }
-        val encoded = json.encodeToString(ListSerializer(Expense.serializer()), current)
+        saveExpenses(current)
+    }
+
+    override suspend fun deleteExpense(expenseId: String) {
+        val current = getExpenses().toMutableList().apply {
+            removeAll { it.id == expenseId }
+        }
+        saveExpenses(current)
+    }
+
+    private fun saveExpenses(expenses: List<Expense>) {
+        val encoded = json.encodeToString(ListSerializer(Expense.serializer()), expenses)
         prefs.edit().putString(KEY_EXPENSES, encoded).apply()
     }
 

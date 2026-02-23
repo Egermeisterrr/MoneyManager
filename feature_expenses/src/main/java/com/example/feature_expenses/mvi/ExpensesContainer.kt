@@ -3,6 +3,7 @@ package com.example.feature_expenses.mvi
 import com.example.domain_expenses.models.Expense
 import com.example.domain_expenses.models.StatsPeriod
 import com.example.domain_expenses.use_case.AddExpenseUseCase
+import com.example.domain_expenses.use_case.DeleteExpenseUseCase
 import com.example.domain_expenses.use_case.FilterExpensesByPeriodUseCase
 import com.example.domain_expenses.use_case.GetExpensesUseCase
 import kotlinx.coroutines.CoroutineScope
@@ -17,6 +18,7 @@ import java.util.UUID
 class ExpensesContainer(
     private val getExpensesUseCase: GetExpensesUseCase,
     private val addExpenseUseCase: AddExpenseUseCase,
+    private val deleteExpenseUseCase: DeleteExpenseUseCase,
     private val filterExpensesByPeriodUseCase: FilterExpensesByPeriodUseCase
 ) {
 
@@ -44,6 +46,23 @@ class ExpensesContainer(
                     setState { copy(commentInput = intent.comment) }
                 }
                 ExpensesIntent.SubmitExpense -> submitExpense()
+                is ExpensesIntent.RequestDeleteExpense -> {
+                    setState {
+                        copy(
+                            pendingDeleteExpenseId = intent.expenseId,
+                            isDeleteDialogOpen = true
+                        )
+                    }
+                }
+                ExpensesIntent.ConfirmDeleteExpense -> confirmDeleteExpense()
+                ExpensesIntent.DismissDeleteExpense -> {
+                    setState {
+                        copy(
+                            pendingDeleteExpenseId = null,
+                            isDeleteDialogOpen = false
+                        )
+                    }
+                }
             }
         }
     }
@@ -104,6 +123,18 @@ class ExpensesContainer(
             )
         )
         resetDialog()
+        refreshExpenses()
+    }
+
+    private suspend fun confirmDeleteExpense() {
+        val expenseId = state.value.pendingDeleteExpenseId ?: return
+        deleteExpenseUseCase(expenseId)
+        setState {
+            copy(
+                pendingDeleteExpenseId = null,
+                isDeleteDialogOpen = false
+            )
+        }
         refreshExpenses()
     }
 

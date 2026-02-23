@@ -1,16 +1,17 @@
 package com.example.feature_expenses.mvi
 
-import com.example.api_expenses.Expense
-import com.example.api_expenses.ExpenseCategory
-import com.example.domain_expenses.AddExpenseUseCase
-import com.example.domain_expenses.FilterExpensesByPeriodUseCase
-import com.example.domain_expenses.GetExpensesUseCase
+import com.example.domain_expenses.models.Expense
+import com.example.domain_expenses.models.StatsPeriod
+import com.example.domain_expenses.use_case.AddExpenseUseCase
+import com.example.domain_expenses.use_case.FilterExpensesByPeriodUseCase
+import com.example.domain_expenses.use_case.GetExpensesUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import pro.respawn.flowmvi.api.MVIStore
-import pro.respawn.flowmvi.dsl.store
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 class ExpensesContainer(
@@ -20,123 +21,106 @@ class ExpensesContainer(
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val _state = MutableStateFlow(ExpensesState())
+    val state: StateFlow<ExpensesState> = _state.asStateFlow()
 
-    private val store: MVIStore<ExpensesIntent, ExpensesState, Nothing> = store(
-        initial = ExpensesState(),
-        scope = scope
-    ) {
-        suspend fun refreshExpenses() {
-            val loadedExpenses = getExpensesUseCase()
-            val filtered = filterExpensesByPeriodUseCase(
-                expenses = loadedExpenses,
-                period = state.selectedPeriod,
-                nowMillis = System.currentTimeMillis()
-            )
-            updateState {
-                copy(
-                    allExpenses = loadedExpenses,
-                    visibleExpenses = filtered
-                )
-            }
-        }
+    init {
+        scope.launch { refreshExpenses() }
+    }
 
-        suspend fun submitExpense() {
-            val selectedCategory = state.selectedCategory
-            val amount = state.amountInput.toDoubleOrNull()
-
-            val hasCategoryError = selectedCategory == null
-            val hasAmountError = amount == null || amount <= 0
-
-            if (hasCategoryError || hasAmountError) {
-                updateState {
-                    copy(
-                        isCategoryError = hasCategoryError,
-                        isAmountError = hasAmountError
-                    )
-                }
-                return
-            }
-
-            addExpenseUseCase(
-                Expense(
-                    id = UUID.randomUUID().toString(),
-                    category = selectedCategory,
-                    amount = amount,
-                    comment = state.commentInput.trim(),
-                    timestampMillis = System.currentTimeMillis()
-                )
-            )
-
-            updateState {
-                copy(
-                    isAddDialogOpen = false,
-                    selectedCategory = null,
-                    amountInput = "",
-                    commentInput = "",
-                    isCategoryError = false,
-                    isAmountError = false
-                )
-            }
-            refreshExpenses()
-        }
-
-        init {
-            refreshExpenses()
-        }
-
-        reduce { intent ->
+    fun dispatch(intent: ExpensesIntent) {
+        scope.launch {
             when (intent) {
-                is ExpensesIntent.SelectPeriod -> {
-                    val filtered = filterExpensesByPeriodUseCase(
-                        expenses = state.allExpenses,
-                        period = intent.period,
-                        nowMillis = System.currentTimeMillis()
-                    )
-                    updateState {
-                        copy(
-                            selectedPeriod = intent.period,
-                            visibleExpenses = filtered
-                        )
-                    }
-                }
-
-                ExpensesIntent.OpenAddExpenseDialog -> {
-                    updateState { copy(isAddDialogOpen = true) }
-                }
-
-                ExpensesIntent.CloseAddExpenseDialog -> {
-                    updateState {
-                        copy(
-                            isAddDialogOpen = false,
-                            selectedCategory = null,
-                            amountInput = "",
-                            commentInput = "",
-                            isCategoryError = false,
-                            isAmountError = false
-                        )
-                    }
-                }
-
+                is ExpensesIntent.SelectPeriod -> selectPeriod(intent.period)
+                ExpensesIntent.OpenAddExpenseDialog -> setState { copy(isAddDialogOpen = true) }
+                ExpensesIntent.CloseAddExpenseDialog -> resetDialog()
                 is ExpensesIntent.SelectCategory -> {
-                    updateState { copy(selectedCategory = intent.category, isCategoryError = false) }
+                    setState { copy(selectedCategory = intent.category, isCategoryError = false) }
                 }
-
                 is ExpensesIntent.ChangeAmount -> {
-                    updateState { copy(amountInput = intent.amount, isAmountError = false) }
+                    setState { copy(amountInput = intent.amount, isAmountError = false) }
                 }
-
                 is ExpensesIntent.ChangeComment -> {
-                    updateState { copy(commentInput = intent.comment) }
+                    setState { copy(commentInput = intent.comment) }
                 }
-
                 ExpensesIntent.SubmitExpense -> submitExpense()
             }
         }
     }
 
-    val state: StateFlow<ExpensesState> = store.state
+    private suspend fun refreshExpenses() {
+        val loadedExpenses = getExpensesUseCase()
+        val filtered = filterExpensesByPeriodUseCase(
+            expenses = loadedExpenses,
+            period = state.value.selectedPeriod,
+            nowMillis = System.currentTimeMillis()
+        )
+        setState {
+            copy(
+                allExpenses = loadedExpenses,
+                visibleExpenses = filtered
+            )
+        }
+    }
 
-    fun dispatch(intent: ExpensesIntent) {
-        store.intent(intent)
+    private fun selectPeriod(period: StatsPeriod) {
+        val filtered = filterExpensesByPeriodUseCase(
+            expenses = state.value.allExpenses,
+            period = period,
+            nowMillis = System.currentTimeMillis()
+        )
+        setState {
+            copy(
+                selectedPeriod = period,
+                visibleExpenses = filtered
+            )
+        }
+    }
+
+    private suspend fun submitExpense() {
+        val selectedCategory = state.value.selectedCategory
+        val amount = state.value.amountInput.toDoubleOrNull()
+
+        val hasCategoryError = selectedCategory == null
+        val hasAmountError = amount == null || amount <= 0
+
+        if (hasCategoryError || hasAmountError) {
+            setState {
+                copy(
+                    isCategoryError = hasCategoryError,
+                    isAmountError = hasAmountError
+                )
+            }
+            return
+        }
+
+        addExpenseUseCase(
+            Expense(
+                id = UUID.randomUUID().toString(),
+                category = selectedCategory,
+                amount = amount,
+                comment = state.value.commentInput.trim(),
+                timestampMillis = System.currentTimeMillis()
+            )
+        )
+        resetDialog()
+        refreshExpenses()
+    }
+
+    private fun resetDialog() {
+        setState {
+            copy(
+                isAddDialogOpen = false,
+                selectedCategory = null,
+                amountInput = "",
+                commentInput = "",
+                isCategoryError = false,
+                isAmountError = false
+            )
+        }
+    }
+
+    private inline fun setState(transform: ExpensesState.() -> ExpensesState) {
+        _state.value = _state.value.transform()
     }
 }

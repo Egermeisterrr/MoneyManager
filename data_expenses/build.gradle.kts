@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.domain_expenses"
+    namespace = "com.example.data_expenses"
     compileSdk = 36
 
     defaultConfig {
@@ -22,5 +22,6 @@ android {
 }
 
 dependencies {
+    implementation(project(":domain_expenses"))
     implementation(libs.kotlinx.serialization.json)
 }

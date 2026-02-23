@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.feature_expenses"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 28
@@ -27,7 +27,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":api_expenses"))
+    implementation(project(":data_expenses"))
     implementation(project(":domain_expenses"))
 
     implementation(libs.androidx.core.ktx)

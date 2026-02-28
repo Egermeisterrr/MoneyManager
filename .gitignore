@@ -1,27 +1,91 @@
-# OS
+# ==============================
+# macOS
+# ==============================
 .DS_Store
+.AppleDouble
+.LSOverride
 
-# Android / IntelliJ
+# ==============================
+# Android Studio / IntelliJ
+# Based on: https://github.com/github/gitignore/blob/main/Android.gitignore
+# ==============================
+.idea/
 *.iml
-.idea/caches/
-.idea/libraries/
-.idea/modules.xml
-.idea/workspace.xml
-.idea/navEditor.xml
-.idea/assetWizardSettings.xml
-
-# Gradle / Kotlin
-.gradle/
-.kotlinc/
-.kotlin/
-**/build/
-
-# Local env
-local.properties
-
-# Native build
+*.ipr
+*.iws
+captures/
 .externalNativeBuild/
 .cxx/
 
-# Misc
-captures/
+# Keep shared code style configs if needed
+!.idea/codeStyles
+!.idea/codeStyles/*
+!.idea/inspectionProfiles
+!.idea/inspectionProfiles/*
+
+# ==============================
+# Gradle
+# ==============================
+.gradle/
+build/
+*/build/
+**/build/
+
+# Keep Gradle wrapper JAR
+!gradle/wrapper/gradle-wrapper.jar
+!/gradle/wrapper/gradle-wrapper.jar
+
+# ==============================
+# Local configuration
+# ==============================
+local.properties
+signing.properties
+
+# Keystore files (important)
+*.jks
+*.keystore
+
+# ==============================
+# Logs
+# ==============================
+*.log
+
+# ==============================
+# Generated files
+# ==============================
+bin/
+gen/
+out/
+
+# ==============================
+# Kotlin
+# ==============================
+.kotlin/
+.kotlinc/
+
+# ==============================
+# Navigation Safe Args
+# ==============================
+.navigation/
+
+# ==============================
+# Android Studio profiling
+# ==============================
+*.hprof
+
+# ==============================
+# Firebase / Google Services
+# ==============================
+google-services.json
+
+# ==============================
+# NDK
+# ==============================
+obj/
+
+# ==============================
+# APK / AAB artifacts
+# ==============================
+*.apk
+*.ap_
+*.aab

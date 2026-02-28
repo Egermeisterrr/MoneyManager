@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- API safety -->
+    <issue id="NewApi" severity="error" />
+    <issue id="InlinedApi" severity="error" />
+
+    <!-- UI/UX accessibility and localization -->
+    <issue id="ContentDescription" severity="warning" />
+    <issue id="HardcodedText" severity="warning" />
+    <issue id="MissingTranslation" severity="warning" />
+    <issue id="ExtraTranslation" severity="warning" />
+
+    <!-- Resource hygiene -->
+    <issue id="UnusedResources" severity="warning" />
+</lint>

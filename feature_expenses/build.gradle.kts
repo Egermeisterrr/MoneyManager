@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -24,6 +25,18 @@ android {
     buildFeatures {
         compose = true
     }
+
+    lint {
+        lintConfig = file("$rootDir/lint.xml")
+        checkDependencies = true
+        abortOnError = false
+    }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
 }
 
 dependencies {

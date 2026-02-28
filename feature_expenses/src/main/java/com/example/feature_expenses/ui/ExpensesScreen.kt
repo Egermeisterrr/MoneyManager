@@ -57,6 +57,7 @@ import com.example.domain_expenses.models.ExpenseCategory
 import com.example.domain_expenses.models.StatsPeriod
 import com.example.feature_expenses.mvi.ExpensesContainer
 import com.example.feature_expenses.mvi.ExpensesIntent
+import com.example.feature_expenses.mvi.ExpensesState
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -72,16 +73,49 @@ private val CategoryPalette = mapOf(
     ExpenseCategory.OTHER to Color(0xFF78909C)
 )
 
+private val SCREEN_GRADIENT_COLORS = listOf(Color(0xFFF5F7FF), Color(0xFFEFFAF5))
+private val EMPTY_STATE_CARD_COLOR = Color.White.copy(alpha = 0.92f)
+private val SUMMARY_CARD_COLOR = Color.White.copy(alpha = 0.95f)
+private val SWIPE_DELETE_BACKGROUND_COLOR = Color(0xFFFFEBEE)
+private val SWIPE_DELETE_TEXT_COLOR = Color(0xFFC62828)
+private val EMPTY_PIE_COLOR = Color(0xFFE0E0E0)
+private const val SCREEN_PADDING = 16
+private const val LIST_ITEM_SPACING = 12
+private const val SWIPE_CORNER_RADIUS = 18
+private const val SWIPE_HORIZONTAL_PADDING = 18
+private const val PIE_CHART_SIZE = 200
+private const val PIE_START_ANGLE = -90f
+private const val FULL_CIRCLE_SWEEP = 360f
+private const val CATEGORY_DROPDOWN_WIDTH = 0.92f
+
+private data class AddExpenseDialogUiState(
+    val selectedCategory: ExpenseCategory?,
+    val amountInput: String,
+    val commentInput: String,
+    val isCategoryError: Boolean,
+    val isAmountError: Boolean
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExpensesRoute(
     container: ExpensesContainer
 ) {
     val state by container.state.collectAsState()
+    val onIntent: (ExpensesIntent) -> Unit = { intent -> container.dispatch(intent) }
 
+    ExpensesScreenContent(state = state, onIntent = onIntent)
+    ExpensesDialogs(state = state, onIntent = onIntent)
+}
+
+@Composable
+private fun ExpensesScreenContent(
+    state: ExpensesState,
+    onIntent: (ExpensesIntent) -> Unit
+) {
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { container.dispatch(ExpensesIntent.OpenAddExpenseDialog) }) {
+            FloatingActionButton(onClick = { onIntent(ExpensesIntent.OpenAddExpenseDialog) }) {
                 Icon(Icons.Default.Add, contentDescription = "Add expense")
             }
         }
@@ -89,105 +123,123 @@ fun ExpensesRoute(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF5F7FF), Color(0xFFEFFAF5))
-                    )
-                )
+                .background(Brush.verticalGradient(colors = SCREEN_GRADIENT_COLORS))
                 .padding(padding)
-                .padding(16.dp)
+                .padding(SCREEN_PADDING.dp)
         ) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                item {
-                    SummarySection(expenses = state.visibleExpenses)
-                }
-
-                item {
-                    PeriodSwitcher(
-                        selected = state.selectedPeriod,
-                        onSelected = { container.dispatch(ExpensesIntent.SelectPeriod(it)) }
-                    )
-                }
-
-                item {
-                    Text(
-                        text = "Expenses",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                items(state.visibleExpenses, key = { it.id }) { expense ->
-                    val dismissState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { dismissValue ->
-                            if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
-                                container.dispatch(ExpensesIntent.RequestDeleteExpense(expense.id))
-                            }
-                            false
-                        }
-                    )
-                    SwipeToDismissBox(
-                        state = dismissState,
-                        enableDismissFromStartToEnd = false,
-                        enableDismissFromEndToStart = true,
-                        backgroundContent = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color(0xFFFFEBEE), RoundedCornerShape(18.dp))
-                                    .padding(horizontal = 18.dp),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Text(
-                                    text = "Delete",
-                                    color = Color(0xFFC62828),
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    ) {
-                        ExpenseItem(expense)
-                    }
-                }
-
-                if (state.visibleExpenses.isEmpty()) {
-                    item {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f))
-                        ) {
-                            Text(
-                                text = "No expenses for this period yet.",
-                                modifier = Modifier.padding(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
+            ExpenseList(
+                state = state,
+                onIntent = onIntent
+            )
         }
     }
+}
 
+@Composable
+private fun ExpenseList(
+    state: ExpensesState,
+    onIntent: (ExpensesIntent) -> Unit
+) {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(LIST_ITEM_SPACING.dp),
+        modifier = Modifier.fillMaxSize()
+    ) {
+        item { SummarySection(expenses = state.visibleExpenses) }
+        item {
+            PeriodSwitcher(
+                selected = state.selectedPeriod,
+                onSelected = { onIntent(ExpensesIntent.SelectPeriod(it)) }
+            )
+        }
+        item {
+            Text(
+                text = "Expenses",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        items(state.visibleExpenses, key = { it.id }) { expense ->
+            SwipeToDeleteExpenseItem(
+                expense = expense,
+                onDeleteRequest = { onIntent(ExpensesIntent.RequestDeleteExpense(expense.id)) }
+            )
+        }
+        if (state.visibleExpenses.isEmpty()) {
+            item { EmptyExpensesCard() }
+        }
+    }
+}
+
+@Composable
+private fun SwipeToDeleteExpenseItem(
+    expense: Expense,
+    onDeleteRequest: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { dismissValue ->
+            if (dismissValue == SwipeToDismissBoxValue.EndToStart) {
+                onDeleteRequest()
+            }
+            false
+        }
+    )
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(SWIPE_DELETE_BACKGROUND_COLOR, RoundedCornerShape(SWIPE_CORNER_RADIUS.dp))
+                    .padding(horizontal = SWIPE_HORIZONTAL_PADDING.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text(
+                    text = "Delete",
+                    color = SWIPE_DELETE_TEXT_COLOR,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    ) {
+        ExpenseItem(expense)
+    }
+}
+
+@Composable
+private fun EmptyExpensesCard() {
+    Card(colors = CardDefaults.cardColors(containerColor = EMPTY_STATE_CARD_COLOR)) {
+        Text(
+            text = "No expenses for this period yet.",
+            modifier = Modifier.padding(SCREEN_PADDING.dp)
+        )
+    }
+}
+
+@Composable
+private fun ExpensesDialogs(
+    state: ExpensesState,
+    onIntent: (ExpensesIntent) -> Unit
+) {
     if (state.isAddDialogOpen) {
         AddExpenseDialog(
-            selectedCategory = state.selectedCategory,
-            amountInput = state.amountInput,
-            commentInput = state.commentInput,
-            isCategoryError = state.isCategoryError,
-            isAmountError = state.isAmountError,
-            onDismiss = { container.dispatch(ExpensesIntent.CloseAddExpenseDialog) },
-            onCategorySelected = { container.dispatch(ExpensesIntent.SelectCategory(it)) },
-            onAmountChanged = { container.dispatch(ExpensesIntent.ChangeAmount(it)) },
-            onCommentChanged = { container.dispatch(ExpensesIntent.ChangeComment(it)) },
-            onAddClick = { container.dispatch(ExpensesIntent.SubmitExpense) }
+            uiState = AddExpenseDialogUiState(
+                selectedCategory = state.selectedCategory,
+                amountInput = state.amountInput,
+                commentInput = state.commentInput,
+                isCategoryError = state.isCategoryError,
+                isAmountError = state.isAmountError
+            ),
+            onDismiss = { onIntent(ExpensesIntent.CloseAddExpenseDialog) },
+            onIntent = onIntent
         )
     }
 
     if (state.isDeleteDialogOpen) {
         ConfirmDeleteDialog(
-            onDismiss = { container.dispatch(ExpensesIntent.DismissDeleteExpense) },
-            onConfirm = { container.dispatch(ExpensesIntent.ConfirmDeleteExpense) }
+            onDismiss = { onIntent(ExpensesIntent.DismissDeleteExpense) },
+            onConfirm = { onIntent(ExpensesIntent.ConfirmDeleteExpense) }
         )
     }
 }
@@ -196,7 +248,7 @@ fun ExpensesRoute(
 private fun SummarySection(expenses: List<Expense>) {
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
+        colors = CardDefaults.cardColors(containerColor = SUMMARY_CARD_COLOR)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("Spending by category", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -214,10 +266,10 @@ private fun PieChart(expenses: List<Expense>) {
     val total = totals.values.sum().takeIf { it > 0 } ?: 1.0
 
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
-        Canvas(modifier = Modifier.size(200.dp)) {
-            var startAngle = -90f
+        Canvas(modifier = Modifier.size(PIE_CHART_SIZE.dp)) {
+            var startAngle = PIE_START_ANGLE
             totals.forEach { (category, value) ->
-                val sweep = ((value / total) * 360f).toFloat()
+                val sweep = ((value / total) * FULL_CIRCLE_SWEEP).toFloat()
                 drawArc(
                     color = CategoryPalette.getValue(category),
                     startAngle = startAngle,
@@ -229,9 +281,9 @@ private fun PieChart(expenses: List<Expense>) {
             }
             if (totals.isEmpty()) {
                 drawArc(
-                    color = Color(0xFFE0E0E0),
+                    color = EMPTY_PIE_COLOR,
                     startAngle = 0f,
-                    sweepAngle = 360f,
+                    sweepAngle = FULL_CIRCLE_SWEEP,
                     useCenter = true,
                     size = Size(size.width, size.height)
                 )
@@ -327,16 +379,9 @@ private fun ExpenseItem(expense: Expense) {
 
 @Composable
 private fun AddExpenseDialog(
-    selectedCategory: ExpenseCategory?,
-    amountInput: String,
-    commentInput: String,
-    isCategoryError: Boolean,
-    isAmountError: Boolean,
+    uiState: AddExpenseDialogUiState,
     onDismiss: () -> Unit,
-    onCategorySelected: (ExpenseCategory) -> Unit,
-    onAmountChanged: (String) -> Unit,
-    onCommentChanged: (String) -> Unit,
-    onAddClick: () -> Unit
+    onIntent: (ExpensesIntent) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -347,11 +392,11 @@ private fun AddExpenseDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
-                        value = selectedCategory?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "",
+                        value = uiState.selectedCategory?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "",
                         onValueChange = { },
                         readOnly = true,
                         label = { Text("Category *") },
-                        isError = isCategoryError,
+                        isError = uiState.isCategoryError,
                         trailingIcon = {
                             IconButton(onClick = { expanded = !expanded }) {
                                 Text(if (expanded) "▲" else "▼")
@@ -363,13 +408,13 @@ private fun AddExpenseDialog(
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
-                        modifier = Modifier.fillMaxWidth(0.92f)
+                        modifier = Modifier.fillMaxWidth(CATEGORY_DROPDOWN_WIDTH)
                     ) {
                         ExpenseCategory.entries.forEach { category ->
                             DropdownMenuItem(
                                 text = { Text(category.name.lowercase().replaceFirstChar { it.uppercase() }) },
                                 onClick = {
-                                    onCategorySelected(category)
+                                    onIntent(ExpensesIntent.SelectCategory(category))
                                     expanded = false
                                 }
                             )
@@ -378,24 +423,24 @@ private fun AddExpenseDialog(
                 }
 
                 OutlinedTextField(
-                    value = amountInput,
-                    onValueChange = onAmountChanged,
+                    value = uiState.amountInput,
+                    onValueChange = { onIntent(ExpensesIntent.ChangeAmount(it)) },
                     label = { Text("Amount *") },
-                    isError = isAmountError,
+                    isError = uiState.isAmountError,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
-                    value = commentInput,
-                    onValueChange = onCommentChanged,
+                    value = uiState.commentInput,
+                    onValueChange = { onIntent(ExpensesIntent.ChangeComment(it)) },
                     label = { Text("Comment (optional)") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = onAddClick) {
+            TextButton(onClick = { onIntent(ExpensesIntent.SubmitExpense) }) {
                 Text("Add")
             }
         },
@@ -418,7 +463,7 @@ private fun ConfirmDeleteDialog(
         text = { Text("Are you sure you want to delete this expense?") },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete", color = Color(0xFFC62828))
+                Text("Delete", color = SWIPE_DELETE_TEXT_COLOR)
             }
         },
         dismissButton = {

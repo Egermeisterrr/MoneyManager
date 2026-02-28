@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -19,6 +20,18 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    lint {
+        lintConfig = file("$rootDir/lint.xml")
+        checkDependencies = true
+        abortOnError = false
+    }
+}
+
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
 }
 
 dependencies {

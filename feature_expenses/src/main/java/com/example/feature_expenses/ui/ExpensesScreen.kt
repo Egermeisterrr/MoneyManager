@@ -2,7 +2,6 @@ package com.example.feature_expenses.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +24,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -392,6 +393,7 @@ private fun ExpenseItem(expense: Expense) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddExpenseDialog(
     uiState: AddExpenseDialogUiState,
@@ -405,7 +407,10 @@ private fun AddExpenseDialog(
         title = { Text(stringResource(R.string.add_expense)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(modifier = Modifier.fillMaxWidth()) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
                     OutlinedTextField(
                         value = uiState.selectedCategory?.localizedName().orEmpty(),
                         onValueChange = { },
@@ -413,13 +418,11 @@ private fun AddExpenseDialog(
                         label = { Text(stringResource(R.string.category_required)) },
                         isError = uiState.isCategoryError,
                         trailingIcon = {
-                            IconButton(onClick = { expanded = !expanded }) {
-                                Text(if (expanded) "▲" else "▼")
-                            }
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                         },
                         modifier = Modifier
+                            .menuAnchor()
                             .fillMaxWidth()
-                            .clickable { expanded = !expanded }
                     )
                     DropdownMenu(
                         expanded = expanded,

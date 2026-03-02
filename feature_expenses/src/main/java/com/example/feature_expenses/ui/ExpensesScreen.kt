@@ -24,6 +24,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -50,11 +52,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.domain_expenses.models.Expense
 import com.example.domain_expenses.models.ExpenseCategory
 import com.example.domain_expenses.models.StatsPeriod
+import com.example.feature_expenses.R
 import com.example.feature_expenses.mvi.ExpensesContainer
 import com.example.feature_expenses.mvi.ExpensesIntent
 import com.example.feature_expenses.mvi.ExpensesState
@@ -73,12 +78,13 @@ private val CategoryPalette = mapOf(
     ExpenseCategory.OTHER to Color(0xFF78909C)
 )
 
-private val SCREEN_GRADIENT_COLORS = listOf(Color(0xFFF5F7FF), Color(0xFFEFFAF5))
-private val EMPTY_STATE_CARD_COLOR = Color.White.copy(alpha = 0.92f)
-private val SUMMARY_CARD_COLOR = Color.White.copy(alpha = 0.95f)
-private val SWIPE_DELETE_BACKGROUND_COLOR = Color(0xFFFFEBEE)
-private val SWIPE_DELETE_TEXT_COLOR = Color(0xFFC62828)
-private val EMPTY_PIE_COLOR = Color(0xFFE0E0E0)
+private val SCREEN_GRADIENT_COLORS = listOf(Color(0xFF0B111A), Color(0xFF101A28))
+private val EMPTY_STATE_CARD_COLOR = Color(0xFF182232)
+private val SUMMARY_CARD_COLOR = Color(0xFF182232)
+private val EXPENSE_CARD_COLOR = Color(0xFF182232)
+private val SWIPE_DELETE_BACKGROUND_COLOR = Color(0xFF3A1721)
+private val SWIPE_DELETE_TEXT_COLOR = Color(0xFFFF9FA7)
+private val EMPTY_PIE_COLOR = Color(0xFF2B3B54)
 private const val SCREEN_PADDING = 16
 private const val LIST_ITEM_SPACING = 12
 private const val SWIPE_CORNER_RADIUS = 18
@@ -116,7 +122,7 @@ private fun ExpensesScreenContent(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { onIntent(ExpensesIntent.OpenAddExpenseDialog) }) {
-                Icon(Icons.Default.Add, contentDescription = "Add expense")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_expense))
             }
         }
     ) { padding ->
@@ -153,8 +159,9 @@ private fun ExpenseList(
         }
         item {
             Text(
-                text = "Expenses",
+                text = stringResource(R.string.expenses_title),
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -196,7 +203,7 @@ private fun SwipeToDeleteExpenseItem(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Text(
-                    text = "Delete",
+                    text = stringResource(R.string.delete),
                     color = SWIPE_DELETE_TEXT_COLOR,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -211,7 +218,8 @@ private fun SwipeToDeleteExpenseItem(
 private fun EmptyExpensesCard() {
     Card(colors = CardDefaults.cardColors(containerColor = EMPTY_STATE_CARD_COLOR)) {
         Text(
-            text = "No expenses for this period yet.",
+            text = stringResource(R.string.no_expenses_for_period),
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(SCREEN_PADDING.dp)
         )
     }
@@ -251,7 +259,11 @@ private fun SummarySection(expenses: List<Expense>) {
         colors = CardDefaults.cardColors(containerColor = SUMMARY_CARD_COLOR)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Spending by category", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                text = stringResource(R.string.spending_by_category),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(modifier = Modifier.height(12.dp))
             PieChart(expenses = expenses)
             Spacer(modifier = Modifier.height(12.dp))
@@ -302,7 +314,10 @@ private fun PieChart(expenses: List<Expense>) {
 private fun Legend(expenses: List<Expense>) {
     val totals = expenses.groupBy { it.category }.mapValues { entry -> entry.value.sumOf { it.amount } }
     if (totals.isEmpty()) {
-        Text("Add your first expense to see statistics.")
+        Text(
+            text = stringResource(R.string.add_first_expense_for_stats),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         return
     }
 
@@ -315,7 +330,7 @@ private fun Legend(expenses: List<Expense>) {
                         .background(CategoryPalette.getValue(category), CircleShape)
                 )
                 Spacer(modifier = Modifier.size(8.dp))
-                Text(text = category.name.lowercase().replaceFirstChar { it.uppercase() })
+                Text(text = category.localizedName())
                 Spacer(modifier = Modifier.weight(1f))
                 Text(text = NumberFormat.getCurrencyInstance().format(value), fontWeight = FontWeight.SemiBold)
             }
@@ -336,7 +351,7 @@ private fun PeriodSwitcher(
                 selected = selected == period,
                 onClick = { onSelected(period) }
             ) {
-                Text(period.name.lowercase().replaceFirstChar { it.uppercase() })
+                Text(period.localizedName())
             }
         }
     }
@@ -344,17 +359,18 @@ private fun PeriodSwitcher(
 
 @Composable
 private fun ExpenseItem(expense: Expense) {
-    val formatter = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
+    val appLocale = appLocale()
+    val formatter = remember(appLocale) { SimpleDateFormat("MMM dd, HH:mm", appLocale) }
 
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
+        colors = CardDefaults.cardColors(containerColor = EXPENSE_CARD_COLOR)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 AssistChip(
                     onClick = {},
-                    label = { Text(expense.category.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                    label = { Text(expense.category.localizedName()) }
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
@@ -377,6 +393,7 @@ private fun ExpenseItem(expense: Expense) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddExpenseDialog(
     uiState: AddExpenseDialogUiState,
@@ -387,22 +404,24 @@ private fun AddExpenseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add expense") },
+        title = { Text(stringResource(R.string.add_expense)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(modifier = Modifier.fillMaxWidth()) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
                     OutlinedTextField(
-                        value = uiState.selectedCategory?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "",
+                        value = uiState.selectedCategory?.localizedName().orEmpty(),
                         onValueChange = { },
                         readOnly = true,
-                        label = { Text("Category *") },
+                        label = { Text(stringResource(R.string.category_required)) },
                         isError = uiState.isCategoryError,
                         trailingIcon = {
-                            IconButton(onClick = { expanded = !expanded }) {
-                                Text(if (expanded) "▲" else "▼")
-                            }
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                         },
                         modifier = Modifier
+                            .menuAnchor()
                             .fillMaxWidth()
                     )
                     DropdownMenu(
@@ -412,7 +431,7 @@ private fun AddExpenseDialog(
                     ) {
                         ExpenseCategory.entries.forEach { category ->
                             DropdownMenuItem(
-                                text = { Text(category.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                text = { Text(category.localizedName()) },
                                 onClick = {
                                     onIntent(ExpensesIntent.SelectCategory(category))
                                     expanded = false
@@ -425,7 +444,7 @@ private fun AddExpenseDialog(
                 OutlinedTextField(
                     value = uiState.amountInput,
                     onValueChange = { onIntent(ExpensesIntent.ChangeAmount(it)) },
-                    label = { Text("Amount *") },
+                    label = { Text(stringResource(R.string.amount_required)) },
                     isError = uiState.isAmountError,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -434,19 +453,19 @@ private fun AddExpenseDialog(
                 OutlinedTextField(
                     value = uiState.commentInput,
                     onValueChange = { onIntent(ExpensesIntent.ChangeComment(it)) },
-                    label = { Text("Comment (optional)") },
+                    label = { Text(stringResource(R.string.comment_optional)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = { onIntent(ExpensesIntent.SubmitExpense) }) {
-                Text("Add")
+                Text(stringResource(R.string.add))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -459,17 +478,43 @@ private fun ConfirmDeleteDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Delete expense") },
-        text = { Text("Are you sure you want to delete this expense?") },
+        title = { Text(stringResource(R.string.delete_expense_title)) },
+        text = { Text(stringResource(R.string.delete_expense_confirmation)) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text("Delete", color = SWIPE_DELETE_TEXT_COLOR)
+                Text(stringResource(R.string.delete), color = SWIPE_DELETE_TEXT_COLOR)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
+}
+
+@Composable
+private fun ExpenseCategory.localizedName(): String = when (this) {
+    ExpenseCategory.FOOD -> stringResource(R.string.category_food)
+    ExpenseCategory.TRANSPORT -> stringResource(R.string.category_transport)
+    ExpenseCategory.BILLS -> stringResource(R.string.category_bills)
+    ExpenseCategory.ENTERTAINMENT -> stringResource(R.string.category_entertainment)
+    ExpenseCategory.SHOPPING -> stringResource(R.string.category_shopping)
+    ExpenseCategory.HEALTH -> stringResource(R.string.category_health)
+    ExpenseCategory.OTHER -> stringResource(R.string.category_other)
+}
+
+@Composable
+private fun StatsPeriod.localizedName(): String = when (this) {
+    StatsPeriod.DAY -> stringResource(R.string.period_day)
+    StatsPeriod.WEEK -> stringResource(R.string.period_week)
+    StatsPeriod.MONTH -> stringResource(R.string.period_month)
+    StatsPeriod.YEAR -> stringResource(R.string.period_year)
+}
+
+@Composable
+private fun appLocale(): Locale {
+    val configuration = LocalConfiguration.current
+    val systemLocale = configuration.locales[0] ?: Locale.ENGLISH
+    return if (systemLocale.language == "ru") Locale.forLanguageTag("ru") else Locale.ENGLISH
 }

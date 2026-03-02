@@ -73,12 +73,13 @@ private val CategoryPalette = mapOf(
     ExpenseCategory.OTHER to Color(0xFF78909C)
 )
 
-private val SCREEN_GRADIENT_COLORS = listOf(Color(0xFFF5F7FF), Color(0xFFEFFAF5))
-private val EMPTY_STATE_CARD_COLOR = Color.White.copy(alpha = 0.92f)
-private val SUMMARY_CARD_COLOR = Color.White.copy(alpha = 0.95f)
-private val SWIPE_DELETE_BACKGROUND_COLOR = Color(0xFFFFEBEE)
-private val SWIPE_DELETE_TEXT_COLOR = Color(0xFFC62828)
-private val EMPTY_PIE_COLOR = Color(0xFFE0E0E0)
+private val SCREEN_GRADIENT_COLORS = listOf(Color(0xFF0B111A), Color(0xFF101A28))
+private val EMPTY_STATE_CARD_COLOR = Color(0xFF182232)
+private val SUMMARY_CARD_COLOR = Color(0xFF182232)
+private val EXPENSE_CARD_COLOR = Color(0xFF182232)
+private val SWIPE_DELETE_BACKGROUND_COLOR = Color(0xFF3A1721)
+private val SWIPE_DELETE_TEXT_COLOR = Color(0xFFFF9FA7)
+private val EMPTY_PIE_COLOR = Color(0xFF2B3B54)
 private const val SCREEN_PADDING = 16
 private const val LIST_ITEM_SPACING = 12
 private const val SWIPE_CORNER_RADIUS = 18
@@ -155,6 +156,7 @@ private fun ExpenseList(
             Text(
                 text = "Expenses",
                 style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -212,6 +214,7 @@ private fun EmptyExpensesCard() {
     Card(colors = CardDefaults.cardColors(containerColor = EMPTY_STATE_CARD_COLOR)) {
         Text(
             text = "No expenses for this period yet.",
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(SCREEN_PADDING.dp)
         )
     }
@@ -302,7 +305,10 @@ private fun PieChart(expenses: List<Expense>) {
 private fun Legend(expenses: List<Expense>) {
     val totals = expenses.groupBy { it.category }.mapValues { entry -> entry.value.sumOf { it.amount } }
     if (totals.isEmpty()) {
-        Text("Add your first expense to see statistics.")
+        Text(
+            text = "Add your first expense to see statistics.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         return
     }
 
@@ -348,7 +354,7 @@ private fun ExpenseItem(expense: Expense) {
 
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
+        colors = CardDefaults.cardColors(containerColor = EXPENSE_CARD_COLOR)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

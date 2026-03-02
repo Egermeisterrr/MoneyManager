@@ -1,0 +1,28 @@
+<resources>
+    <string name="add_expense">Добавить трату</string>
+    <string name="expenses_title">Траты</string>
+    <string name="delete">Удалить</string>
+    <string name="cancel">Отмена</string>
+    <string name="add">Добавить</string>
+    <string name="no_expenses_for_period">За этот период трат пока нет.</string>
+    <string name="spending_by_category">Траты по категориям</string>
+    <string name="add_first_expense_for_stats">Добавьте первую трату, чтобы увидеть статистику.</string>
+    <string name="category_required">Категория *</string>
+    <string name="amount_required">Сумма *</string>
+    <string name="comment_optional">Комментарий (необязательно)</string>
+    <string name="delete_expense_title">Удалить трату</string>
+    <string name="delete_expense_confirmation">Вы уверены, что хотите удалить эту трату?</string>
+
+    <string name="period_day">День</string>
+    <string name="period_week">Неделя</string>
+    <string name="period_month">Месяц</string>
+    <string name="period_year">Год</string>
+
+    <string name="category_food">Еда</string>
+    <string name="category_transport">Транспорт</string>
+    <string name="category_bills">Счета</string>
+    <string name="category_entertainment">Развлечения</string>
+    <string name="category_shopping">Покупки</string>
+    <string name="category_health">Здоровье</string>
+    <string name="category_other">Другое</string>
+</resources>

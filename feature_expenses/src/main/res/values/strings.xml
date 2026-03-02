@@ -1,0 +1,28 @@
+<resources>
+    <string name="add_expense">Add expense</string>
+    <string name="expenses_title">Expenses</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="add">Add</string>
+    <string name="no_expenses_for_period">No expenses for this period yet.</string>
+    <string name="spending_by_category">Spending by category</string>
+    <string name="add_first_expense_for_stats">Add your first expense to see statistics.</string>
+    <string name="category_required">Category *</string>
+    <string name="amount_required">Amount *</string>
+    <string name="comment_optional">Comment (optional)</string>
+    <string name="delete_expense_title">Delete expense</string>
+    <string name="delete_expense_confirmation">Are you sure you want to delete this expense?</string>
+
+    <string name="period_day">Day</string>
+    <string name="period_week">Week</string>
+    <string name="period_month">Month</string>
+    <string name="period_year">Year</string>
+
+    <string name="category_food">Food</string>
+    <string name="category_transport">Transport</string>
+    <string name="category_bills">Bills</string>
+    <string name="category_entertainment">Entertainment</string>
+    <string name="category_shopping">Shopping</string>
+    <string name="category_health">Health</string>
+    <string name="category_other">Other</string>
+</resources>

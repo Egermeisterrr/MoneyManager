@@ -24,3 +24,7 @@ include(":app")
 include(":data_expenses")
 include(":domain_expenses")
 include(":feature_expenses")
+
+project(":data_expenses").projectDir = file("sources/expenses/data_expenses")
+project(":domain_expenses").projectDir = file("sources/expenses/domain_expenses")
+project(":feature_expenses").projectDir = file("sources/expenses/feature_expenses")

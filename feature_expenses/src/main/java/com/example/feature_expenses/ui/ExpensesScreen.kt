@@ -435,77 +435,19 @@ private fun AddExpenseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                if (isEditMode) {
-                    stringResource(R.string.edit_expense)
-                } else {
-                    stringResource(R.string.add_expense)
-                }
-            )
-        },
+        title = { AddExpenseDialogTitle(isEditMode = isEditMode) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = uiState.selectedCategory?.localizedName().orEmpty(),
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.category_required)) },
-                        isError = uiState.isCategoryError,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.fillMaxWidth(CATEGORY_DROPDOWN_WIDTH)
-                    ) {
-                        ExpenseCategory.entries.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.localizedName()) },
-                                onClick = {
-                                    onIntent(ExpensesIntent.SelectCategory(category))
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = uiState.amountInput,
-                    onValueChange = { onIntent(ExpensesIntent.ChangeAmount(it)) },
-                    label = { Text(stringResource(R.string.amount_required)) },
-                    isError = uiState.isAmountError,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = uiState.commentInput,
-                    onValueChange = { onIntent(ExpensesIntent.ChangeComment(it)) },
-                    label = { Text(stringResource(R.string.comment_optional)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            AddExpenseDialogFields(
+                uiState = uiState,
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                onDismissCategoryMenu = { expanded = false },
+                onIntent = onIntent
+            )
         },
         confirmButton = {
             TextButton(onClick = { onIntent(ExpensesIntent.SubmitExpense) }) {
-                Text(
-                    if (isEditMode) {
-                        stringResource(R.string.save)
-                    } else {
-                        stringResource(R.string.add)
-                    }
-                )
+                AddExpenseDialogConfirmText(isEditMode = isEditMode)
             }
         },
         dismissButton = {
@@ -514,6 +456,90 @@ private fun AddExpenseDialog(
             }
         }
     )
+}
+
+@Composable
+private fun AddExpenseDialogTitle(isEditMode: Boolean) {
+    Text(
+        if (isEditMode) {
+            stringResource(R.string.edit_expense)
+        } else {
+            stringResource(R.string.add_expense)
+        }
+    )
+}
+
+@Composable
+private fun AddExpenseDialogConfirmText(isEditMode: Boolean) {
+    Text(
+        if (isEditMode) {
+            stringResource(R.string.save)
+        } else {
+            stringResource(R.string.add)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddExpenseDialogFields(
+    uiState: AddExpenseDialogUiState,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit,
+    onDismissCategoryMenu: () -> Unit,
+    onIntent: (ExpensesIntent) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { onExpandedChange() }
+        ) {
+            OutlinedTextField(
+                value = uiState.selectedCategory?.localizedName().orEmpty(),
+                onValueChange = { },
+                readOnly = true,
+                label = { Text(stringResource(R.string.category_required)) },
+                isError = uiState.isCategoryError,
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = onDismissCategoryMenu,
+                modifier = Modifier.fillMaxWidth(CATEGORY_DROPDOWN_WIDTH)
+            ) {
+                ExpenseCategory.entries.forEach { category ->
+                    DropdownMenuItem(
+                        text = { Text(category.localizedName()) },
+                        onClick = {
+                            onIntent(ExpensesIntent.SelectCategory(category))
+                            onDismissCategoryMenu()
+                        }
+                    )
+                }
+            }
+        }
+
+        OutlinedTextField(
+            value = uiState.amountInput,
+            onValueChange = { onIntent(ExpensesIntent.ChangeAmount(it)) },
+            label = { Text(stringResource(R.string.amount_required)) },
+            isError = uiState.isAmountError,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = uiState.commentInput,
+            onValueChange = { onIntent(ExpensesIntent.ChangeComment(it)) },
+            label = { Text(stringResource(R.string.comment_optional)) },
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable

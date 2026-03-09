@@ -12,6 +12,10 @@
     <string name="comment_optional">Комментарий (необязательно)</string>
     <string name="delete_expense_title">Удалить трату</string>
     <string name="delete_expense_confirmation">Вы уверены, что хотите удалить эту трату?</string>
+    <string name="expense_deleted">Трата удалена</string>
+    <string name="undo">Отменить</string>
+    <string name="edit_expense">Редактировать трату</string>
+    <string name="save">Сохранить</string>
 
     <string name="period_day">День</string>
     <string name="period_week">Неделя</string>

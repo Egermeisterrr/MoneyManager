@@ -17,7 +17,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun MoneyManagerTheme(
+internal fun MoneyManagerTheme(
     content: @Composable () -> Unit
 ) {
     MaterialTheme(

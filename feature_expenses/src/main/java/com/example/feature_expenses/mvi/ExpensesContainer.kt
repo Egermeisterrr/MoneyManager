@@ -26,13 +26,13 @@ class ExpensesContainer(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(ExpensesState())
-    val state: StateFlow<ExpensesState> = _state.asStateFlow()
+    internal val state: StateFlow<ExpensesState> = _state.asStateFlow()
 
     init {
         scope.launch { refreshExpenses() }
     }
 
-    fun dispatch(intent: ExpensesIntent) {
+    internal fun dispatch(intent: ExpensesIntent) {
         scope.launch {
             when (intent) {
                 is ExpensesIntent.SelectPeriod -> selectPeriod(intent.period)

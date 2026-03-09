@@ -6,7 +6,7 @@ import com.example.domain_expenses.models.StatsPeriod
 import pro.respawn.flowmvi.api.MVIIntent
 import pro.respawn.flowmvi.api.MVIState
 
-data class ExpensesState(
+internal data class ExpensesState(
     val allExpenses: List<Expense> = emptyList(),
     val visibleExpenses: List<Expense> = emptyList(),
     val selectedPeriod: StatsPeriod = StatsPeriod.MONTH,
@@ -23,7 +23,7 @@ data class ExpensesState(
     val isAmountError: Boolean = false
 ) : MVIState
 
-sealed interface ExpensesIntent : MVIIntent {
+internal sealed interface ExpensesIntent : MVIIntent {
     data class SelectPeriod(val period: StatsPeriod) : ExpensesIntent
     data object OpenAddExpenseDialog : ExpensesIntent
     data class OpenEditExpenseDialog(val expenseId: String) : ExpensesIntent

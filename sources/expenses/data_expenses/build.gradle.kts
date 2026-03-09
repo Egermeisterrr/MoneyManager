@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    id("org.jetbrains.kotlin.kapt")
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.detekt)
 }
@@ -37,4 +38,7 @@ detekt {
 dependencies {
     implementation(project(":domain_expenses"))
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt(libs.androidx.room.compiler)
 }

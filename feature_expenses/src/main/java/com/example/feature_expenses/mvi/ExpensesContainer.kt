@@ -6,6 +6,7 @@ import com.example.domain_expenses.use_case.AddExpenseUseCase
 import com.example.domain_expenses.use_case.DeleteExpenseUseCase
 import com.example.domain_expenses.use_case.FilterExpensesByPeriodUseCase
 import com.example.domain_expenses.use_case.GetExpensesUseCase
+import com.example.domain_expenses.use_case.UpdateExpenseUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,23 +19,25 @@ import java.util.UUID
 class ExpensesContainer(
     private val getExpensesUseCase: GetExpensesUseCase,
     private val addExpenseUseCase: AddExpenseUseCase,
+    private val updateExpenseUseCase: UpdateExpenseUseCase,
     private val deleteExpenseUseCase: DeleteExpenseUseCase,
     private val filterExpensesByPeriodUseCase: FilterExpensesByPeriodUseCase
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _state = MutableStateFlow(ExpensesState())
-    val state: StateFlow<ExpensesState> = _state.asStateFlow()
+    internal val state: StateFlow<ExpensesState> = _state.asStateFlow()
 
     init {
         scope.launch { refreshExpenses() }
     }
 
-    fun dispatch(intent: ExpensesIntent) {
+    internal fun dispatch(intent: ExpensesIntent) {
         scope.launch {
             when (intent) {
                 is ExpensesIntent.SelectPeriod -> selectPeriod(intent.period)
-                ExpensesIntent.OpenAddExpenseDialog -> setState { copy(isAddDialogOpen = true) }
+                ExpensesIntent.OpenAddExpenseDialog -> openAddDialog()
+                is ExpensesIntent.OpenEditExpenseDialog -> openEditDialog(intent.expenseId)
                 ExpensesIntent.CloseAddExpenseDialog -> resetDialog()
                 is ExpensesIntent.SelectCategory -> {
                     setState { copy(selectedCategory = intent.category, isCategoryError = false) }
@@ -62,6 +65,10 @@ class ExpensesContainer(
                             isDeleteDialogOpen = false
                         )
                     }
+                }
+                ExpensesIntent.UndoDeleteExpense -> undoDeleteExpense()
+                ExpensesIntent.ConsumeUndoDeleteEvent -> {
+                    setState { copy(recentlyDeletedExpense = null) }
                 }
             }
         }
@@ -113,35 +120,89 @@ class ExpensesContainer(
             return
         }
 
-        addExpenseUseCase(
-            Expense(
-                id = UUID.randomUUID().toString(),
-                category = selectedCategory,
-                amount = amount,
-                comment = state.value.commentInput.trim(),
-                timestampMillis = System.currentTimeMillis()
+        val editingExpenseId = state.value.editingExpenseId
+        val updatedComment = state.value.commentInput.trim()
+        if (editingExpenseId == null) {
+            addExpenseUseCase(
+                Expense(
+                    id = UUID.randomUUID().toString(),
+                    category = selectedCategory,
+                    amount = amount,
+                    comment = updatedComment,
+                    timestampMillis = System.currentTimeMillis()
+                )
             )
-        )
+        } else {
+            val currentExpense = state.value.allExpenses.firstOrNull { it.id == editingExpenseId }
+                ?: return
+            updateExpenseUseCase(
+                currentExpense.copy(
+                    category = selectedCategory,
+                    amount = amount,
+                    comment = updatedComment
+                )
+            )
+        }
         resetDialog()
         refreshExpenses()
     }
 
     private suspend fun confirmDeleteExpense() {
         val expenseId = state.value.pendingDeleteExpenseId ?: return
+        val deletedExpense = state.value.allExpenses.firstOrNull { it.id == expenseId }
         deleteExpenseUseCase(expenseId)
         setState {
             copy(
                 pendingDeleteExpenseId = null,
-                isDeleteDialogOpen = false
+                isDeleteDialogOpen = false,
+                recentlyDeletedExpense = deletedExpense,
+                undoDeleteEventId = undoDeleteEventId + 1
             )
         }
         refreshExpenses()
+    }
+
+    private suspend fun undoDeleteExpense() {
+        val deletedExpense = state.value.recentlyDeletedExpense ?: return
+        addExpenseUseCase(deletedExpense)
+        setState { copy(recentlyDeletedExpense = null) }
+        refreshExpenses()
+    }
+
+    private fun openAddDialog() {
+        setState {
+            copy(
+                isAddDialogOpen = true,
+                editingExpenseId = null,
+                selectedCategory = null,
+                amountInput = "",
+                commentInput = "",
+                isCategoryError = false,
+                isAmountError = false
+            )
+        }
+    }
+
+    private fun openEditDialog(expenseId: String) {
+        val expense = state.value.allExpenses.firstOrNull { it.id == expenseId } ?: return
+        setState {
+            copy(
+                isAddDialogOpen = true,
+                editingExpenseId = expense.id,
+                selectedCategory = expense.category,
+                amountInput = expense.amount.toString(),
+                commentInput = expense.comment,
+                isCategoryError = false,
+                isAmountError = false
+            )
+        }
     }
 
     private fun resetDialog() {
         setState {
             copy(
                 isAddDialogOpen = false,
+                editingExpenseId = null,
                 selectedCategory = null,
                 amountInput = "",
                 commentInput = "",

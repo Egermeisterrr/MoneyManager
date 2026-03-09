@@ -12,6 +12,10 @@
     <string name="comment_optional">Comment (optional)</string>
     <string name="delete_expense_title">Delete expense</string>
     <string name="delete_expense_confirmation">Are you sure you want to delete this expense?</string>
+    <string name="expense_deleted">Expense deleted</string>
+    <string name="undo">Undo</string>
+    <string name="edit_expense">Edit expense</string>
+    <string name="save">Save</string>
 
     <string name="period_day">Day</string>
     <string name="period_week">Week</string>

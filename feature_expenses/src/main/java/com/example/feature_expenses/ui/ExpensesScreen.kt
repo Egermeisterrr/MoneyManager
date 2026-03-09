@@ -29,19 +29,23 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -109,17 +113,36 @@ fun ExpensesRoute(
 ) {
     val state by container.state.collectAsState()
     val onIntent: (ExpensesIntent) -> Unit = { intent -> container.dispatch(intent) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val undoLabel = stringResource(R.string.undo)
+    val deleteMessage = stringResource(R.string.expense_deleted)
 
-    ExpensesScreenContent(state = state, onIntent = onIntent)
+    LaunchedEffect(state.undoDeleteEventId) {
+        if (state.undoDeleteEventId == 0L || state.recentlyDeletedExpense == null) return@LaunchedEffect
+        when (
+            snackbarHostState.showSnackbar(
+                message = deleteMessage,
+                actionLabel = undoLabel,
+                duration = SnackbarDuration.Long
+            )
+        ) {
+            SnackbarResult.ActionPerformed -> onIntent(ExpensesIntent.UndoDeleteExpense)
+            SnackbarResult.Dismissed -> onIntent(ExpensesIntent.ConsumeUndoDeleteEvent)
+        }
+    }
+
+    ExpensesScreenContent(state = state, onIntent = onIntent, snackbarHostState = snackbarHostState)
     ExpensesDialogs(state = state, onIntent = onIntent)
 }
 
 @Composable
 private fun ExpensesScreenContent(
     state: ExpensesState,
-    onIntent: (ExpensesIntent) -> Unit
+    onIntent: (ExpensesIntent) -> Unit,
+    snackbarHostState: SnackbarHostState
 ) {
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = { onIntent(ExpensesIntent.OpenAddExpenseDialog) }) {
                 Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_expense))
@@ -168,7 +191,8 @@ private fun ExpenseList(
         items(state.visibleExpenses, key = { it.id }) { expense ->
             SwipeToDeleteExpenseItem(
                 expense = expense,
-                onDeleteRequest = { onIntent(ExpensesIntent.RequestDeleteExpense(expense.id)) }
+                onDeleteRequest = { onIntent(ExpensesIntent.RequestDeleteExpense(expense.id)) },
+                onEditRequest = { onIntent(ExpensesIntent.OpenEditExpenseDialog(expense.id)) }
             )
         }
         if (state.visibleExpenses.isEmpty()) {
@@ -180,7 +204,8 @@ private fun ExpenseList(
 @Composable
 private fun SwipeToDeleteExpenseItem(
     expense: Expense,
-    onDeleteRequest: () -> Unit
+    onDeleteRequest: () -> Unit,
+    onEditRequest: () -> Unit
 ) {
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { dismissValue ->
@@ -210,7 +235,7 @@ private fun SwipeToDeleteExpenseItem(
             }
         }
     ) {
-        ExpenseItem(expense)
+        ExpenseItem(expense = expense, onClick = onEditRequest)
     }
 }
 
@@ -239,6 +264,7 @@ private fun ExpensesDialogs(
                 isCategoryError = state.isCategoryError,
                 isAmountError = state.isAmountError
             ),
+            isEditMode = state.editingExpenseId != null,
             onDismiss = { onIntent(ExpensesIntent.CloseAddExpenseDialog) },
             onIntent = onIntent
         )
@@ -358,11 +384,15 @@ private fun PeriodSwitcher(
 }
 
 @Composable
-private fun ExpenseItem(expense: Expense) {
+private fun ExpenseItem(
+    expense: Expense,
+    onClick: () -> Unit
+) {
     val appLocale = appLocale()
     val formatter = remember(appLocale) { SimpleDateFormat("MMM dd, HH:mm", appLocale) }
 
     Card(
+        onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = EXPENSE_CARD_COLOR)
     ) {
@@ -397,6 +427,7 @@ private fun ExpenseItem(expense: Expense) {
 @Composable
 private fun AddExpenseDialog(
     uiState: AddExpenseDialogUiState,
+    isEditMode: Boolean,
     onDismiss: () -> Unit,
     onIntent: (ExpensesIntent) -> Unit
 ) {
@@ -404,63 +435,19 @@ private fun AddExpenseDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_expense)) },
+        title = { AddExpenseDialogTitle(isEditMode = isEditMode) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        value = uiState.selectedCategory?.localizedName().orEmpty(),
-                        onValueChange = { },
-                        readOnly = true,
-                        label = { Text(stringResource(R.string.category_required)) },
-                        isError = uiState.isCategoryError,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    DropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false },
-                        modifier = Modifier.fillMaxWidth(CATEGORY_DROPDOWN_WIDTH)
-                    ) {
-                        ExpenseCategory.entries.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.localizedName()) },
-                                onClick = {
-                                    onIntent(ExpensesIntent.SelectCategory(category))
-                                    expanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                OutlinedTextField(
-                    value = uiState.amountInput,
-                    onValueChange = { onIntent(ExpensesIntent.ChangeAmount(it)) },
-                    label = { Text(stringResource(R.string.amount_required)) },
-                    isError = uiState.isAmountError,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = uiState.commentInput,
-                    onValueChange = { onIntent(ExpensesIntent.ChangeComment(it)) },
-                    label = { Text(stringResource(R.string.comment_optional)) },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            AddExpenseDialogFields(
+                uiState = uiState,
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                onDismissCategoryMenu = { expanded = false },
+                onIntent = onIntent
+            )
         },
         confirmButton = {
             TextButton(onClick = { onIntent(ExpensesIntent.SubmitExpense) }) {
-                Text(stringResource(R.string.add))
+                AddExpenseDialogConfirmText(isEditMode = isEditMode)
             }
         },
         dismissButton = {
@@ -469,6 +456,90 @@ private fun AddExpenseDialog(
             }
         }
     )
+}
+
+@Composable
+private fun AddExpenseDialogTitle(isEditMode: Boolean) {
+    Text(
+        if (isEditMode) {
+            stringResource(R.string.edit_expense)
+        } else {
+            stringResource(R.string.add_expense)
+        }
+    )
+}
+
+@Composable
+private fun AddExpenseDialogConfirmText(isEditMode: Boolean) {
+    Text(
+        if (isEditMode) {
+            stringResource(R.string.save)
+        } else {
+            stringResource(R.string.add)
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddExpenseDialogFields(
+    uiState: AddExpenseDialogUiState,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit,
+    onDismissCategoryMenu: () -> Unit,
+    onIntent: (ExpensesIntent) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { onExpandedChange() }
+        ) {
+            OutlinedTextField(
+                value = uiState.selectedCategory?.localizedName().orEmpty(),
+                onValueChange = { },
+                readOnly = true,
+                label = { Text(stringResource(R.string.category_required)) },
+                isError = uiState.isCategoryError,
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = onDismissCategoryMenu,
+                modifier = Modifier.fillMaxWidth(CATEGORY_DROPDOWN_WIDTH)
+            ) {
+                ExpenseCategory.entries.forEach { category ->
+                    DropdownMenuItem(
+                        text = { Text(category.localizedName()) },
+                        onClick = {
+                            onIntent(ExpensesIntent.SelectCategory(category))
+                            onDismissCategoryMenu()
+                        }
+                    )
+                }
+            }
+        }
+
+        OutlinedTextField(
+            value = uiState.amountInput,
+            onValueChange = { onIntent(ExpensesIntent.ChangeAmount(it)) },
+            label = { Text(stringResource(R.string.amount_required)) },
+            isError = uiState.isAmountError,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = uiState.commentInput,
+            onValueChange = { onIntent(ExpensesIntent.ChangeComment(it)) },
+            label = { Text(stringResource(R.string.comment_optional)) },
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable

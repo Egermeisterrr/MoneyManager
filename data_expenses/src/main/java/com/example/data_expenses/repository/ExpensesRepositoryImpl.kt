@@ -23,6 +23,14 @@ class ExpensesRepositoryImpl(context: Context) : ExpensesRepository {
         saveExpenses(current)
     }
 
+    override suspend fun updateExpense(expense: Expense) {
+        val current = getExpenses().toMutableList()
+        val index = current.indexOfFirst { it.id == expense.id }
+        if (index == -1) return
+        current[index] = expense
+        saveExpenses(current)
+    }
+
     override suspend fun deleteExpense(expenseId: String) {
         val current = getExpenses().toMutableList().apply {
             removeAll { it.id == expenseId }

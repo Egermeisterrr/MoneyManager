@@ -6,6 +6,7 @@ import com.example.domain_expenses.use_case.AddExpenseUseCase
 import com.example.domain_expenses.use_case.DeleteExpenseUseCase
 import com.example.domain_expenses.use_case.FilterExpensesByPeriodUseCase
 import com.example.domain_expenses.use_case.GetExpensesUseCase
+import com.example.domain_expenses.use_case.UpdateExpenseUseCase
 import com.example.feature_expenses.mvi.ExpensesContainer
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -14,7 +15,8 @@ val expensesFeatureModule = module {
     single<ExpensesRepository> { ExpensesRepositoryImpl(androidContext()) }
     factory { GetExpensesUseCase(get()) }
     factory { AddExpenseUseCase(get()) }
+    factory { UpdateExpenseUseCase(get()) }
     factory { DeleteExpenseUseCase(get()) }
     factory { FilterExpensesByPeriodUseCase() }
-    single { ExpensesContainer(get(), get(), get(), get()) }
+    factory { ExpensesContainer(get(), get(), get(), get(), get()) }
 }
